@@ -469,6 +469,7 @@ public:
         {
             size_t block_index = index / BlockSize;
             int index_in_block = index % BlockSize;
+			std::cout << "(index, BlockSize, block_index, index_in_block): (" << index << ", " << (size_t) BlockSize << ", " << block_index << ", " << index_in_block << ")" << std::endl;
             BlockPointer block = entries + block_index;
             int8_t metadata = block->control_bytes[index_in_block];
             if (first)
@@ -525,6 +526,7 @@ public:
     void rehash(size_t num_items)
     {
         num_items = std::max(num_items, static_cast<size_t>(std::ceil(num_elements / static_cast<double>(_max_load_factor))));
+		std::cout << "\trehash; num_items: " << num_items << std::endl;
         if (num_items == 0)
         {
             reset_to_empty_state();
@@ -536,6 +538,7 @@ public:
         size_t num_blocks = num_items / BlockSize;
         if (num_items % BlockSize)
             ++num_blocks;
+		std::cout << "\tnum_blocks: " << num_blocks << std::endl;
         size_t memory_requirement = calculate_memory_requirement(num_blocks);
         unsigned char * new_memory = &*AllocatorTraits::allocate(*this, memory_requirement);
 
@@ -552,6 +555,7 @@ public:
         num_elements = 0;
         if (num_items)
             ++num_items;
+		std::cout << "\tnum_items: " << num_items << std::endl;
         size_t old_num_blocks = num_items / BlockSize;
         if (num_items % BlockSize)
             ++old_num_blocks;
@@ -838,6 +842,7 @@ private:
 
         value_type & operator*() const
         {
+			std::cout << typeid(block->data[index_in_block()]).name() << std::endl;
             return block->data[index_in_block()];
         }
         bool operator!() const
@@ -864,11 +869,13 @@ private:
         using std::swap;
         if (is_full())
         {
+			std::cout << "\templace_direct_hit; is_full" << std::endl;
             grow();
             return emplace(std::forward<Args>(args)...);
         }
         if (block.metadata() == Constants::magic_for_empty)
         {
+			std::cout << "\tmagic_for_empty" << std::endl;
             AllocatorTraits::construct(*this, std::addressof(*block), std::forward<Args>(args)...);
             block.set_metadata(Constants::magic_for_direct_hit);
             ++num_elements;
