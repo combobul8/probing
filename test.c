@@ -8,9 +8,10 @@ int
 main()
 {	ska::bytell_hash_map<string, int> H;
 
-	string key = "aback";
+	auto key = "aback";
 	H[key] = 0;
 
-	cout << key << " -> " << H[key] << endl;
+	auto val_returned = H[key];
+	cout << key << " -> " << val_returned << endl;
 	return 0;
 }

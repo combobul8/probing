@@ -14,6 +14,7 @@
 #include "flat_hash_map.hpp"
 #include <vector>
 #include <array>
+#include <iostream>
 
 namespace ska
 {
@@ -1100,10 +1101,12 @@ public:
 
     inline V & operator[](const K & key)
     {
+		std::cout << "[] const K&" << std::endl;
         return emplace(key, convertible_to_value()).first->second;
     }
     inline V & operator[](K && key)
     {
+		std::cout << "[] K&&" << std::endl;
         return emplace(std::move(key), convertible_to_value()).first->second;
     }
     V & at(const K & key)
