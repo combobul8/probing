@@ -526,7 +526,7 @@ public:
     void rehash(size_t num_items)
     {
         num_items = std::max(num_items, static_cast<size_t>(std::ceil(num_elements / static_cast<double>(_max_load_factor))));
-		std::cout << "\trehash; num_items: " << num_items << std::endl;
+		std::cout << "\trehash(" << num_items << ")" << std::endl;
         if (num_items == 0)
         {
             reset_to_empty_state();
@@ -555,7 +555,6 @@ public:
         num_elements = 0;
         if (num_items)
             ++num_items;
-		std::cout << "\tnum_items: " << num_items << std::endl;
         size_t old_num_blocks = num_items / BlockSize;
         if (num_items % BlockSize)
             ++old_num_blocks;
@@ -875,7 +874,7 @@ private:
         }
         if (block.metadata() == Constants::magic_for_empty)
         {
-			std::cout << "\tmagic_for_empty" << std::endl;
+			std::cout << "\templace_direct_hit; magic_for_empty" << std::endl;
             AllocatorTraits::construct(*this, std::addressof(*block), std::forward<Args>(args)...);
             block.set_metadata(Constants::magic_for_direct_hit);
             ++num_elements;

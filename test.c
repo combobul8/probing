@@ -6,10 +6,10 @@ using namespace std;
 
 int
 main()
-{	ska::bytell_hash_map<char, int> H;
+{	ska::bytell_hash_map<string, int> H;
 
-	// auto key = "aback";
-	auto key = 0;
+	auto key = "aback";
+	// auto key = 0;
 	H[key] = 0;
 
 	auto val_returned = H[key];
