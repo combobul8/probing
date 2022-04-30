@@ -934,6 +934,7 @@ private:
             grow();
             return emplace(std::forward<Args>(args)...);
         }
+		std::cout << "emplace_new_key not full, not first" << std::endl;
         AllocatorTraits::construct(*this, std::addressof(*free_block.second), std::forward<Args>(args)...);
         free_block.second.set_metadata(Constants::magic_for_list_entry);
         parent.set_next(free_block.first);
@@ -1112,7 +1113,7 @@ public:
     }
     inline V & operator[](K && key)
     {
-		std::cout << "[] K&&" << std::endl;
+		// std::cout << "[] K&&" << std::endl;
         return emplace(std::move(key), convertible_to_value()).first->second;
     }
     V & at(const K & key)
