@@ -841,7 +841,7 @@ private:
 
         value_type & operator*() const
         {
-			std::cout << typeid(block->data[index_in_block()]).name() << std::endl;
+			// std::cout << typeid(block->data[index_in_block()]).name() << std::endl;
             return block->data[index_in_block()];
         }
         bool operator!() const
