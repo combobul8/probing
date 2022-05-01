@@ -16,7 +16,103 @@
 #include <array>
 #include <iostream>
 
-const int8_t EMPTY = int8_t(0b11111111);
+inline size_t next_power_of_two(size_t i)
+{
+    --i;
+    i |= i >> 1;
+    i |= i >> 2;
+    i |= i >> 4;
+    i |= i >> 8;
+    i |= i >> 16;
+    i |= i >> 32;
+    ++i;
+    return i;
+}
+
+inline int8_t log2(size_t value)
+{
+    static constexpr int8_t table[64] =
+    {
+        63,  0, 58,  1, 59, 47, 53,  2,
+        60, 39, 48, 27, 54, 33, 42,  3,
+        61, 51, 37, 40, 49, 18, 28, 20,
+        55, 30, 34, 11, 43, 14, 22,  4,
+        62, 57, 46, 52, 38, 26, 32, 41,
+        50, 36, 17, 19, 29, 10, 13, 21,
+        56, 45, 25, 31, 35, 16,  9, 12,
+        44, 24, 15,  8, 23,  7,  6,  5
+    };
+    value |= value >> 1;
+    value |= value >> 2;
+    value |= value >> 4;
+    value |= value >> 8;
+    value |= value >> 16;
+    value |= value >> 32;
+    return table[((value - (value >> 1)) * 0x07EDD5E59A4E28C2) >> 58];
+}
+
+struct fibonacci_hash_policy
+{
+    size_t index_for_hash(size_t hash, size_t /*num_slots_minus_one*/) const
+    {
+        return (11400714819323198485ull * hash) >> shift;
+    }
+    size_t keep_in_range(size_t index, size_t num_slots_minus_one) const
+    {
+        return index & num_slots_minus_one;
+    }
+
+    int8_t next_size_over(size_t & size) const
+    {
+        size = std::max(size_t(2), next_power_of_two(size));
+        return 64 - log2(size);
+    }
+    void commit(int8_t shift)
+    {
+        this->shift = shift;
+    }
+    void reset()
+    {
+        shift = 63;
+    }
+
+private:
+    int8_t shift = 63;
+};
+
+constexpr int8_t EMPTY = int8_t(0b11111111);
+constexpr int8_t BITSFORDIRECTHIT = int8_t(0b10000000);
+constexpr int8_t MAGICFORDIRECTHIT = int8_t(0b00000000);
+constexpr int8_t BITSFORDISTANCE = int8_t(0b01111111);
+constexpr int num_jump_distances = 126;
+// jump distances chosen like this:
+// 1. pick the first 16 integers to promote staying in the same block
+// 2. add the next 66 triangular numbers to get even jumps when
+// the hash table is a power of two
+// 3. add 44 more triangular numbers at a much steeper growth rate
+// to get a sequence that allows large jumps so that a table
+// with 10000 sequential numbers doesn't endlessly re-allocate
+constexpr size_t jump_distances[num_jump_distances]
+{
+	0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15,
+
+	21, 28, 36, 45, 55, 66, 78, 91, 105, 120, 136, 153, 171, 190, 210, 231,
+	253, 276, 300, 325, 351, 378, 406, 435, 465, 496, 528, 561, 595, 630,
+	666, 703, 741, 780, 820, 861, 903, 946, 990, 1035, 1081, 1128, 1176,
+	1225, 1275, 1326, 1378, 1431, 1485, 1540, 1596, 1653, 1711, 1770, 1830,
+	1891, 1953, 2016, 2080, 2145, 2211, 2278, 2346, 2415, 2485, 2556,
+
+	3741, 8385, 18915, 42486, 95703, 215496, 485605, 1091503, 2456436,
+	5529475, 12437578, 27986421, 62972253, 141700195, 318819126, 717314626,
+	1614000520, 3631437253, 8170829695, 18384318876, 41364501751,
+	93070021080, 209407709220, 471167588430, 1060127437995, 2385287281530,
+	5366895564381, 12075513791265, 27169907873235, 61132301007778,
+	137547673121001, 309482258302503, 696335090510256, 1566753939653640,
+	3525196427195653, 7931691866727775, 17846306747368716,
+	40154190394120111, 90346928493040500, 203280588949935750,
+	457381324898247375, 1029107980662394500, 2315492957028380766,
+	5209859150892887590,
+};
 
 template<typename T, uint8_t TableSize>
 struct Table
@@ -34,6 +130,7 @@ struct Table
     {
         T data[TableSize];
     };
+	fibonacci_hash_policy hash_policy;
 
     static Table * empty_block()
     {
@@ -140,22 +237,22 @@ struct Table
         bool first = true;
         for (;;)
         {
-            size_t block_index = index / BlockSize;
-            int index_in_block = index % BlockSize;
-            BlockPointer block = entries + block_index;
+            size_t block_index = index / TableSize;
+            int index_in_block = index % TableSize;
+            Table* block = entries + block_index;
             int8_t metadata = block->control_bytes[index_in_block];
             if (first)
             {
-                if ((metadata & Constants::bits_for_direct_hit) != Constants::magic_for_direct_hit)
+                if ((metadata & BITSFORDIRECTHIT) != MAGICFORDIRECTHIT)
                     return emplace_direct_hit({ index, block }, std::forward<Key>(key), std::forward<Args>(args)...);
                 first = false;
             }
             if (compares_equal(key, block->data[index_in_block]))
                 return { { block, index }, false };
-            int8_t to_next_index = metadata & Constants::bits_for_distance;
+            int8_t to_next_index = metadata & BITSFORDISTANCE;
             if (to_next_index == 0)
                 return emplace_new_key({ index, block }, std::forward<Key>(key), std::forward<Args>(args)...);
-            index += Constants::jump_distances[to_next_index];
+            index += jump_distances[to_next_index];
             index = hash_policy.keep_in_range(index, num_slots_minus_one);
         }
     }
