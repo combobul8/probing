@@ -230,30 +230,21 @@ struct Table
     template<typename Key, typename... Args>
     inline std::pair<iterator, bool> emplace(Key && key, Args &&... args)
     {
-        size_t index = hash_object(key);
+        size_t hash = hash_object(key);
         size_t num_slots_minus_one = this->num_slots_minus_one;
         Table* entries = this->entries;
-        index = hash_policy.index_for_hash(index, num_slots_minus_one);
-        bool first = true;
+        hash = hash_policy.index_for_hash(hash, num_slots_minus_one);
         for (;;)
         {
-            size_t block_index = index / TableSize;
-            int index_in_block = index % TableSize;
-            Table* block = entries + block_index;
-            int8_t metadata = block->control_bytes[index_in_block];
-            if (first)
-            {
-                if ((metadata & BITSFORDIRECTHIT) != MAGICFORDIRECTHIT)
-                    return emplace_direct_hit({ index, block }, std::forward<Key>(key), std::forward<Args>(args)...);
-                first = false;
-            }
-            if (compares_equal(key, block->data[index_in_block]))
+            int index = hash % TableSize;
+            Table* block = entries + index;
+
+            if (compares_equal(key, block->data[index]))
                 return { { block, index }, false };
-            int8_t to_next_index = metadata & BITSFORDISTANCE;
-            if (to_next_index == 0)
-                return emplace_new_key({ index, block }, std::forward<Key>(key), std::forward<Args>(args)...);
-            index += jump_distances[to_next_index];
-            index = hash_policy.keep_in_range(index, num_slots_minus_one);
+
+	    std::cout << "TODO: probing" << std::endl;
+	    break;
+            index = hash_policy.keep_in_range(index + 1, num_slots_minus_one);
         }
     }
 };

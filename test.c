@@ -11,7 +11,7 @@ main()
 	{	auto key = "aback";
 		// auto key = 0;
 		cout << key << endl;
-		// H[key] = 0;
+		H[key] = 0;
 	}
 	{	auto key = "abacus";
 		cout << key << endl;
