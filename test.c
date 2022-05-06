@@ -6,12 +6,12 @@ using namespace std;
 
 int
 main()
-{	Table<string, 8> H;
+{	Table<string, int, 8> H;
 
 	{	auto key = "aback";
 		// auto key = 0;
 		cout << key << endl;
-		H[key] = 0;
+		H.emplace(key, 0);
 	}
 	{	auto key = "abacus";
 		cout << key << endl;

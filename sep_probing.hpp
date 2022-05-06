@@ -114,10 +114,10 @@ constexpr size_t jump_distances[num_jump_distances]
 	5209859150892887590,
 };
 
-template<typename T, uint8_t TableSize>
+template<typename K, typename V, uint8_t TableSize>
 struct Table
 {
-    using value_type = T;
+    using value_type = K;
 
     Table()
     {
@@ -128,7 +128,7 @@ struct Table
     int8_t control_bytes[TableSize];
     union
     {
-        T data[TableSize];
+        K data[TableSize];
     };
 	fibonacci_hash_policy hash_policy;
 
@@ -226,6 +226,17 @@ struct Table
     };
 
 	using iterator = templated_iterator<value_type>;
+
+    template<typename U>
+    size_t hash_object(const U & key)
+    {
+        return static_cast<Hasher &>(*this)(key);
+    }
+    template<typename U>
+    size_t hash_object(const U & key) const
+    {
+        return static_cast<const Hasher &>(*this)(key);
+    }
 
     template<typename Key, typename... Args>
     inline std::pair<iterator, bool> emplace(Key && key, Args &&... args)
