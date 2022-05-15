@@ -119,6 +119,16 @@ struct Table
 {
     using value_type = K;
 
+private:
+    size_t num_slots_minus_one = 0;
+
+    template<typename L, typename R>
+    bool compares_equal(const L & lhs, const R & rhs)
+    {
+        return static_cast<std::equal_to<K> &>(*this)(lhs, rhs);
+    }
+
+public:
     Table()
     {
     }
@@ -128,20 +138,9 @@ struct Table
     int8_t control_bytes[TableSize];
     union
     {
-        K data[TableSize];
+		std::pair<K, V> entries[TableSize];
     };
 	fibonacci_hash_policy hash_policy;
-
-    static Table * empty_block()
-    {
-        static std::array<int8_t, TableSize> empty_bytes = []
-        {
-            std::array<int8_t, TableSize> result;
-            result.fill(EMPTY);
-            return result;
-        }();
-        return reinterpret_cast<Table *>(&empty_bytes);
-    }
 
     int first_empty_index() const
     {
@@ -230,12 +229,12 @@ struct Table
     template<typename U>
     size_t hash_object(const U & key)
     {
-        return static_cast<Hasher &>(*this)(key);
+        return static_cast<std::hash<K> &>(*this)(key);
     }
     template<typename U>
     size_t hash_object(const U & key) const
     {
-        return static_cast<const Hasher &>(*this)(key);
+        return static_cast<const std::hash<K> &>(*this)(key);
     }
 
     template<typename Key, typename... Args>
@@ -243,15 +242,15 @@ struct Table
     {
         size_t hash = hash_object(key);
         size_t num_slots_minus_one = this->num_slots_minus_one;
-        Table* entries = this->entries;
+        std::pair<K, V>* entries = this->entries;
         hash = hash_policy.index_for_hash(hash, num_slots_minus_one);
         for (;;)
         {
             int index = hash % TableSize;
-            Table* block = entries + index;
+			std::pair<K, V>* entry = entries + index;
 
-            if (compares_equal(key, block->data[index]))
-                return { { block, index }, false };
+            if (compares_equal(key, entry->first))
+                return { { entry, index }, false };
 
 	    std::cout << "TODO: probing" << std::endl;
 	    break;
