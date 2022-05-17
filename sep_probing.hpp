@@ -115,7 +115,7 @@ constexpr size_t jump_distances[num_jump_distances]
 };
 
 template<typename K, typename V, uint8_t TableSize>
-struct Table
+struct Table : private std::hash<K>, private std::equal_to<K>
 {
     using value_type = K;
 
@@ -162,14 +162,14 @@ public:
     {
     private:
         friend class sherwood_v8_table;
-        Table* current = Table();
+        std::pair<K, V>* current = std::pair<K, V>();
         size_t index = 0;
 
     public:
         templated_iterator()
         {
         }
-        templated_iterator(Table* entries, size_t index)
+        templated_iterator(std::pair<K, V>* entries, size_t index)
             : current(entries)
             , index(index)
         {
@@ -246,7 +246,7 @@ public:
         hash = hash_policy.index_for_hash(hash, num_slots_minus_one);
         for (;;)
         {
-            int index = hash % TableSize;
+            size_t index = hash % TableSize;
 			std::pair<K, V>* entry = entries + index;
 
             if (compares_equal(key, entry->first))
@@ -256,5 +256,7 @@ public:
 	    break;
             index = hash_policy.keep_in_range(index + 1, num_slots_minus_one);
         }
+
+		return { { entries, 0 }, false };
     }
 };
